@@ -10,6 +10,7 @@ import com.example.data.model.FontStyleType
 import com.example.data.model.Novel
 import com.example.data.model.ReaderSettings
 import com.example.data.model.ReaderTheme
+import com.example.data.model.TextAlignmentType
 import com.example.data.model.SupabaseConfig
 import com.example.data.network.SupabaseApiService
 import kotlinx.coroutines.Dispatchers
@@ -67,18 +68,29 @@ class NovelRepository(private val context: Context) {
     }
 
     private fun loadSettings() {
-        val fontSize = prefs.getFloat("font_size", 21f)
+        val fontSize = prefs.getFloat("font_size", 22f)
         val lineSpacing = prefs.getFloat("line_spacing", 1.8f)
-        val themeName = prefs.getString("reader_theme", ReaderTheme.PAPER.name) ?: ReaderTheme.PAPER.name
-        val theme = try { ReaderTheme.valueOf(themeName) } catch (e: Exception) { ReaderTheme.PAPER }
+        val paragraphSpacing = prefs.getInt("paragraph_spacing", 12)
+        val horizMargin = prefs.getInt("horiz_margin", 20)
+        val vertMargin = prefs.getInt("vert_margin", 16)
+        val alignmentName = prefs.getString("text_alignment", TextAlignmentType.JUSTIFIED.name) ?: TextAlignmentType.JUSTIFIED.name
+        val alignment = try { TextAlignmentType.valueOf(alignmentName) } catch (e: Exception) { TextAlignmentType.JUSTIFIED }
+        val themeName = prefs.getString("reader_theme", ReaderTheme.WARM_PAPER.name) ?: ReaderTheme.WARM_PAPER.name
+        val theme = try { ReaderTheme.valueOf(themeName) } catch (e: Exception) { ReaderTheme.WARM_PAPER }
         val fontStyleName = prefs.getString("font_style", FontStyleType.NASTALEEQ.name) ?: FontStyleType.NASTALEEQ.name
         val fontStyle = try { FontStyleType.valueOf(fontStyleName) } catch (e: Exception) { FontStyleType.NASTALEEQ }
+        val brightness = prefs.getFloat("screen_brightness", 0.85f)
 
         _readerSettings.value = ReaderSettings(
             fontSizeSp = fontSize,
             lineHeightMultiplier = lineSpacing,
+            paragraphSpacingDp = paragraphSpacing,
+            horizontalMarginDp = horizMargin,
+            verticalMarginDp = vertMargin,
+            alignment = alignment,
             theme = theme,
-            fontStyle = fontStyle
+            fontStyle = fontStyle,
+            brightness = brightness
         )
     }
 
@@ -87,8 +99,13 @@ class NovelRepository(private val context: Context) {
         prefs.edit()
             .putFloat("font_size", settings.fontSizeSp)
             .putFloat("line_spacing", settings.lineHeightMultiplier)
+            .putInt("paragraph_spacing", settings.paragraphSpacingDp)
+            .putInt("horiz_margin", settings.horizontalMarginDp)
+            .putInt("vert_margin", settings.verticalMarginDp)
+            .putString("text_alignment", settings.alignment.name)
             .putString("reader_theme", settings.theme.name)
             .putString("font_style", settings.fontStyle.name)
+            .putFloat("screen_brightness", settings.brightness)
             .apply()
     }
 
@@ -164,20 +181,54 @@ class NovelRepository(private val context: Context) {
         }
     }
 
-    fun saveBookmark(novel: Novel, chapter: Chapter, progressPercent: Float) {
-        val existing = _bookmarks.value.filterNot { it.novelId == novel.id }
+    fun saveReadingLocation(novelId: String, chapterId: String, charOffset: Int, progressPercent: Float) {
+        prefs.edit()
+            .putString("last_chap_$novelId", chapterId)
+            .putInt("last_offset_$novelId", charOffset)
+            .putFloat("last_prog_$novelId", progressPercent)
+            .apply()
+        updateReadingProgress(novelId, progressPercent)
+    }
+
+    fun getLastReadingLocation(novelId: String): Triple<String?, Int, Float> {
+        val chapId = prefs.getString("last_chap_$novelId", null)
+        val offset = prefs.getInt("last_offset_$novelId", 0)
+        val progress = prefs.getFloat("last_prog_$novelId", 0f)
+        return Triple(chapId, offset, progress)
+    }
+
+    fun addBookmark(
+        novel: Novel,
+        chapter: Chapter,
+        charOffset: Int,
+        pageNumber: Int,
+        snippet: String,
+        note: String = "",
+        progressPercent: Float
+    ): Bookmark {
         val newBookmark = Bookmark(
+            id = UUID.randomUUID().toString(),
             novelId = novel.id,
             novelTitle = novel.title,
             author = novel.author,
             chapterId = chapter.id,
             chapterNumber = chapter.chapterNumber,
             chapterTitle = chapter.title,
-            scrollProgressPercent = progressPercent,
+            charOffset = charOffset,
+            pageNumber = pageNumber,
+            snippet = snippet.take(120),
+            note = note,
+            progressPercent = progressPercent,
             timestamp = System.currentTimeMillis()
         )
-        _bookmarks.value = listOf(newBookmark) + existing
-        updateReadingProgress(novel.id, progressPercent)
+        _bookmarks.value = listOf(newBookmark) + _bookmarks.value
+        saveReadingLocation(novel.id, chapter.id, charOffset, progressPercent)
+        saveBookmarksToPrefs()
+        return newBookmark
+    }
+
+    fun removeBookmarkById(bookmarkId: String) {
+        _bookmarks.value = _bookmarks.value.filterNot { it.id == bookmarkId }
         saveBookmarksToPrefs()
     }
 
@@ -187,33 +238,40 @@ class NovelRepository(private val context: Context) {
     }
 
     private fun saveBookmarksToPrefs() {
-        val joined = _bookmarks.value.joinToString(";") {
-            "${it.novelId}|${it.novelTitle}|${it.author}|${it.chapterId}|${it.chapterNumber}|${it.chapterTitle}|${it.scrollProgressPercent}"
+        val joined = _bookmarks.value.joinToString("###") {
+            "${it.id}|${it.novelId}|${it.novelTitle}|${it.author}|${it.chapterId}|${it.chapterNumber}|${it.chapterTitle}|${it.charOffset}|${it.pageNumber}|${it.snippet.replace("|", "/")}|${it.note.replace("|", "/")}|${it.progressPercent}|${it.timestamp}"
         }
-        prefs.edit().putString("saved_bookmarks", joined).apply()
+        prefs.edit().putString("saved_bookmarks_v2", joined).apply()
     }
 
     private fun loadBookmarks() {
-        val raw = prefs.getString("saved_bookmarks", "") ?: ""
-        if (raw.isBlank()) return
-        val list = mutableListOf<Bookmark>()
-        raw.split(";").forEach { item ->
-            val parts = item.split("|")
-            if (parts.size >= 7) {
-                list.add(
-                    Bookmark(
-                        novelId = parts[0],
-                        novelTitle = parts[1],
-                        author = parts[2],
-                        chapterId = parts[3],
-                        chapterNumber = parts[4].toIntOrNull() ?: 1,
-                        chapterTitle = parts[5],
-                        scrollProgressPercent = parts[6].toFloatOrNull() ?: 0f
+        val raw = prefs.getString("saved_bookmarks_v2", "") ?: ""
+        if (raw.isNotBlank()) {
+            val list = mutableListOf<Bookmark>()
+            raw.split("###").forEach { item ->
+                val parts = item.split("|")
+                if (parts.size >= 13) {
+                    list.add(
+                        Bookmark(
+                            id = parts[0],
+                            novelId = parts[1],
+                            novelTitle = parts[2],
+                            author = parts[3],
+                            chapterId = parts[4],
+                            chapterNumber = parts[5].toIntOrNull() ?: 1,
+                            chapterTitle = parts[6],
+                            charOffset = parts[7].toIntOrNull() ?: 0,
+                            pageNumber = parts[8].toIntOrNull() ?: 1,
+                            snippet = parts[9],
+                            note = parts[10],
+                            progressPercent = parts[11].toFloatOrNull() ?: 0f,
+                            timestamp = parts[12].toLongOrNull() ?: System.currentTimeMillis()
+                        )
                     )
-                )
+                }
             }
+            _bookmarks.value = list
         }
-        _bookmarks.value = list
     }
 
     // Searches management

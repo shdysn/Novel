@@ -30,7 +30,38 @@ class ExampleUnitTest {
     @Test
     fun testNovelCategories_mapping() {
         assertEquals(NovelCategory.ROMANCE, NovelCategory.fromUrdu("رومانوی"))
-        assertEquals(NovelCategory.SPIRITUAL, NovelCategory.fromUrdu("روحانی و تصوف"))
-        assertEquals(NovelCategory.SOCIAL, NovelCategory.fromUrdu("سماجی و اصلاحی"))
+        assertEquals(NovelCategory.SPIRITUAL, NovelCategory.fromUrdu("روحانی"))
+        assertEquals(NovelCategory.SOCIAL, NovelCategory.fromUrdu("معاشرتی"))
+        assertEquals(NovelCategory.ISLAHI, NovelCategory.fromUrdu("اصلاحی"))
+    }
+
+    @Test
+    fun testTextPaginator_findPageIndexForCharOffset() {
+        val samplePages = listOf(
+            com.example.data.model.BookPage(
+                pageIndex = 0,
+                pageNumber = 1,
+                startCharOffset = 0,
+                endCharOffset = 100,
+                text = "صفحہ 1",
+                isFirstPageOfChapter = true,
+                isLastPageOfChapter = false
+            ),
+            com.example.data.model.BookPage(
+                pageIndex = 1,
+                pageNumber = 2,
+                startCharOffset = 100,
+                endCharOffset = 250,
+                text = "صفحہ 2",
+                isFirstPageOfChapter = false,
+                isLastPageOfChapter = true
+            )
+        )
+
+        assertEquals(0, com.example.util.TextPaginator.findPageIndexForCharOffset(samplePages, 0))
+        assertEquals(0, com.example.util.TextPaginator.findPageIndexForCharOffset(samplePages, 50))
+        assertEquals(1, com.example.util.TextPaginator.findPageIndexForCharOffset(samplePages, 100))
+        assertEquals(1, com.example.util.TextPaginator.findPageIndexForCharOffset(samplePages, 200))
+        assertEquals(1, com.example.util.TextPaginator.findPageIndexForCharOffset(samplePages, 500)) // clamps to last page
     }
 }

@@ -2,6 +2,7 @@ package com.example.data.model
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import java.util.UUID
 
 @JsonClass(generateAdapter = true)
 data class Chapter(
@@ -14,13 +15,30 @@ data class Chapter(
     @Json(name = "read_time_minutes") val readTimeMinutes: Int = 5
 )
 
+data class BookPage(
+    val pageIndex: Int,          // 0-based
+    val pageNumber: Int,         // 1-based (pageIndex + 1)
+    val startCharOffset: Int,
+    val endCharOffset: Int,
+    val text: String,
+    val isFirstPageOfChapter: Boolean = false,
+    val isLastPageOfChapter: Boolean = false
+)
+
 data class Bookmark(
+    val id: String = UUID.randomUUID().toString(),
     val novelId: String,
     val novelTitle: String,
     val author: String,
     val chapterId: String,
     val chapterNumber: Int,
     val chapterTitle: String,
-    val scrollProgressPercent: Float = 0f,
+    val charOffset: Int = 0,
+    val pageNumber: Int = 1,
+    val snippet: String = "",
+    val note: String = "",
+    val progressPercent: Float = 0f,
     val timestamp: Long = System.currentTimeMillis()
-)
+) {
+    val scrollProgressPercent: Float get() = progressPercent
+}

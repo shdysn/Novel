@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 sealed class ScreenState {
     data object Main : ScreenState()
     data class NovelDetail(val novelId: String) : ScreenState()
-    data class Reader(val novelId: String, val chapterId: String) : ScreenState()
+    data class Reader(val novelId: String, val chapterId: String, val initialCharOffset: Int = 0) : ScreenState()
     data class AuthorDetail(val authorId: String) : ScreenState()
 }
 
@@ -143,9 +143,16 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
         _screenState.value = ScreenState.NovelDetail(novelId)
     }
 
-    fun navigateToReader(novelId: String, chapterId: String? = null) {
-        val targetChapterId = chapterId ?: repository.getChapters(novelId).firstOrNull()?.id ?: return
-        _screenState.value = ScreenState.Reader(novelId, targetChapterId)
+    fun navigateToReader(novelId: String, chapterId: String? = null, initialCharOffset: Int = 0) {
+        if (chapterId != null) {
+            _screenState.value = ScreenState.Reader(novelId, chapterId, initialCharOffset)
+            return
+        }
+
+        // Check if there is a saved reading location
+        val (lastChapId, lastOffset, _) = repository.getLastReadingLocation(novelId)
+        val targetChapterId = lastChapId ?: repository.getChapters(novelId).firstOrNull()?.id ?: return
+        _screenState.value = ScreenState.Reader(novelId, targetChapterId, lastOffset)
     }
 
     fun navigateBack() {
@@ -172,9 +179,30 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun saveBookmark(novel: Novel, chapter: Chapter, progressPercent: Float) {
-        repository.saveBookmark(novel, chapter, progressPercent)
-        showMessage("بک مارک محفوظ کر لیا گیا (${(progressPercent * 100).toInt()}%)")
+    fun saveBookmark(
+        novel: Novel,
+        chapter: Chapter,
+        progressPercent: Float = 0f,
+        charOffset: Int = 0,
+        pageNumber: Int = 1,
+        snippet: String = "",
+        note: String = ""
+    ) {
+        repository.addBookmark(novel, chapter, charOffset, pageNumber, snippet, note, progressPercent)
+        showMessage("صفحہ $pageNumber کا بک مارک محفوظ ہو گیا")
+    }
+
+    fun removeBookmarkById(bookmarkId: String) {
+        repository.removeBookmarkById(bookmarkId)
+        showMessage("بک مارک ہٹا دیا گیا")
+    }
+
+    fun deleteBookmark(bookmarkId: String) {
+        removeBookmarkById(bookmarkId)
+    }
+
+    fun saveReadingLocation(novelId: String, chapterId: String, charOffset: Int, progressPercent: Float) {
+        repository.saveReadingLocation(novelId, chapterId, charOffset, progressPercent)
     }
 
     fun updateReaderSettings(settings: ReaderSettings) {

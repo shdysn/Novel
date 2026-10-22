@@ -270,7 +270,12 @@ fun MainAppScaffold(viewModel: NovelViewModel) {
                         NovelDetailScreen(novelId = state.novelId, viewModel = viewModel)
                     }
                     is ScreenState.Reader -> {
-                        ReaderScreen(novelId = state.novelId, chapterId = state.chapterId, viewModel = viewModel)
+                        ReaderScreen(
+                            novelId = state.novelId,
+                            chapterId = state.chapterId,
+                            initialCharOffset = state.initialCharOffset,
+                            viewModel = viewModel
+                        )
                     }
                     is ScreenState.AuthorDetail -> {
                         // Handled via author filtered novels
