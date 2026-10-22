@@ -60,6 +60,14 @@ class NovelRepository(private val context: Context) {
 
     private val repositoryScope = CoroutineScope(Dispatchers.IO + Job())
 
+    // Custom API Service for tests or custom client injection
+    @Volatile
+    var customApiService: SupabaseApiService? = null
+
+    private fun getApiService(config: SupabaseConfig): SupabaseApiService? {
+        return customApiService ?: SupabaseApiService.createClient(config.url)
+    }
+
     // In-memory active download jobs for cancellation
     private val activeDownloadJobs = ConcurrentHashMap<String, Job>()
 
@@ -268,6 +276,13 @@ class NovelRepository(private val context: Context) {
 
     fun getNovelById(id: String): Novel? {
         return _novels.value.firstOrNull { it.id == id }
+            ?: SampleUrduNovels.novelsList.firstOrNull { it.id == id }
+    }
+
+    suspend fun getNovelByIdAsync(id: String): Novel? = withContext(Dispatchers.IO) {
+        _novels.value.firstOrNull { it.id == id }
+            ?: novelDao.getNovelById(id)?.toDomainModel()
+            ?: SampleUrduNovels.novelsList.firstOrNull { it.id == id }
     }
 
     fun getChapters(novelId: String): List<Chapter> {
@@ -423,7 +438,7 @@ class NovelRepository(private val context: Context) {
     // -------------------------------------------------------------
 
     suspend fun downloadNovel(novelId: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
-        val novel = getNovelById(novelId) ?: return@withContext Pair(false, "ناول نہیں ملا")
+        val novel = getNovelByIdAsync(novelId) ?: return@withContext Pair(false, "ناول نہیں ملا")
 
         // Set status to DOWNLOADING
         updateNovelDownloadStatus(novelId, DownloadStatus.DOWNLOADING)
@@ -435,7 +450,7 @@ class NovelRepository(private val context: Context) {
                 var fetchedChapters: List<Chapter> = emptyList()
 
                 if (config.isConfigured) {
-                    val client = SupabaseApiService.createClient(config.url)
+                    val client = getApiService(config)
                     if (client != null) {
                         val response = client.getChapters("eq.$novelId", "chapter_number.asc", config.anonKey, "Bearer ${config.anonKey}")
                         if (response.isSuccessful && !response.body().isNullOrEmpty()) {
@@ -547,7 +562,7 @@ class NovelRepository(private val context: Context) {
         }
 
         try {
-            val client = SupabaseApiService.createClient(config.url)
+            val client = getApiService(config)
                 ?: return@withContext Pair(false, "غلط URL فارمیٹ")
 
             val response = client.getNovels(config.anonKey, "Bearer ${config.anonKey}")
@@ -587,7 +602,7 @@ class NovelRepository(private val context: Context) {
 
         _syncingState.value = true
         try {
-            val client = SupabaseApiService.createClient(config.url)
+            val client = getApiService(config)
                 ?: return@withContext Pair(false, "Supabase کلائنٹ تیار نہیں ہو سکا")
 
             // 1. Fetch remote novels
@@ -686,6 +701,11 @@ class NovelRepository(private val context: Context) {
                 }
             }
 
+            val allEntities = novelDao.getAllNovelsFlow().first()
+            if (allEntities.isNotEmpty()) {
+                _novels.value = allEntities.map { it.toDomainModel() }
+            }
+
             _supabaseConfig.value = _supabaseConfig.value.copy(
                 isConnected = true,
                 totalSyncedNovels = remoteNovels.size,
@@ -706,12 +726,12 @@ class NovelRepository(private val context: Context) {
             return@withContext Pair(false, "ڈیٹا پش کرنے کے لیے Supabase URL اور Key درکار ہے")
         }
 
-        val novel = getNovelById(novelId) ?: return@withContext Pair(false, "ناول نہیں ملا")
+        val novel = getNovelByIdAsync(novelId) ?: return@withContext Pair(false, "ناول نہیں ملا")
         val chapters = getChaptersAsync(novelId)
 
         _syncingState.value = true
         try {
-            val client = SupabaseApiService.createClient(config.url)
+            val client = getApiService(config)
                 ?: return@withContext Pair(false, "Supabase کلائنٹ کی خرابی")
 
             val now = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
@@ -888,7 +908,7 @@ class NovelRepository(private val context: Context) {
             // Sync with Supabase if configured
             val config = _supabaseConfig.value
             if (config.isConfigured) {
-                val client = SupabaseApiService.createClient(config.url)
+                val client = getApiService(config)
                 if (client != null) {
                     val patchData = mapOf(
                         "title_urdu" to title.trim(),
@@ -954,7 +974,7 @@ class NovelRepository(private val context: Context) {
         val config = _supabaseConfig.value
         if (config.isConfigured) {
             repositoryScope.launch {
-                val client = SupabaseApiService.createClient(config.url)
+                val client = getApiService(config)
                 if (client != null) {
                     val dto = ChapterDto(
                         id = chapterId,
@@ -989,7 +1009,7 @@ class NovelRepository(private val context: Context) {
             // Delete from Supabase if connected
             val config = _supabaseConfig.value
             if (config.isConfigured) {
-                val client = SupabaseApiService.createClient(config.url)
+                val client = getApiService(config)
                 if (client != null) {
                     client.deleteNovel("eq.$novelId", config.anonKey, "Bearer ${config.anonKey}")
                 }
@@ -1034,7 +1054,7 @@ class NovelRepository(private val context: Context) {
         }
 
         try {
-            val client = SupabaseApiService.createClient(config.url)
+            val client = getApiService(config)
                 ?: return@withContext Pair(false, "Supabase کلائنٹ تیار نہیں ہو سکا")
 
             val requestBody = imageBytes.toRequestBody(mimeType.toMediaTypeOrNull())

@@ -159,7 +159,7 @@ interface SupabaseApiService {
     ): Response<ResponseBody>
 
     companion object {
-        fun createClient(baseUrl: String): SupabaseApiService? {
+        fun createClient(baseUrl: String, customOkHttpClient: OkHttpClient? = null): SupabaseApiService? {
             return try {
                 var cleanUrl = baseUrl.trim()
                 if (!cleanUrl.endsWith("/")) cleanUrl += "/"
@@ -167,20 +167,21 @@ interface SupabaseApiService {
                     cleanUrl += "rest/v1/"
                 }
 
-                val logging = HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.BASIC
+                val client = customOkHttpClient ?: run {
+                    val logging = HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BASIC
+                    }
+                    OkHttpClient.Builder()
+                        .addInterceptor(logging)
+                        .connectTimeout(15, TimeUnit.SECONDS)
+                        .readTimeout(20, TimeUnit.SECONDS)
+                        .writeTimeout(20, TimeUnit.SECONDS)
+                        .build()
                 }
-
-                val okHttpClient = OkHttpClient.Builder()
-                    .addInterceptor(logging)
-                    .connectTimeout(15, TimeUnit.SECONDS)
-                    .readTimeout(20, TimeUnit.SECONDS)
-                    .writeTimeout(20, TimeUnit.SECONDS)
-                    .build()
 
                 Retrofit.Builder()
                     .baseUrl(cleanUrl)
-                    .client(okHttpClient)
+                    .client(client)
                     .addConverterFactory(MoshiConverterFactory.create())
                     .build()
                     .create(SupabaseApiService::class.java)
