@@ -36,4 +36,30 @@ class ExampleRobolectricTest {
     org.junit.Assert.assertTrue(pages.first().isFirstPageOfChapter)
     org.junit.Assert.assertTrue(pages.last().isLastPageOfChapter)
   }
+
+  @Test
+  fun `test Room Database inserts and queries novel entity`() = kotlinx.coroutines.runBlocking {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val db = androidx.room.Room.inMemoryDatabaseBuilder(context, com.example.data.local.AppDatabase::class.java)
+        .allowMainThreadQueries()
+        .build()
+
+    val novel = com.example.data.local.entities.NovelEntity(
+        id = "test_peer_kamil",
+        titleUrdu = "پیرِ کامل (ص)",
+        authorName = "عمیرہ احمد",
+        categoryName = "روحانی",
+        description = "شاہکار اردو ناول",
+        isDownloaded = true,
+        downloadStatus = com.example.data.local.DownloadStatus.AVAILABLE_OFFLINE.name
+    )
+
+    db.novelDao().insertNovel(novel)
+    val fetched = db.novelDao().getNovelById("test_peer_kamil")
+    org.junit.Assert.assertNotNull(fetched)
+    assertEquals("پیرِ کامل (ص)", fetched?.titleUrdu)
+    assertEquals("عمیرہ احمد", fetched?.authorName)
+    org.junit.Assert.assertTrue(fetched!!.isDownloaded)
+    db.close()
+  }
 }

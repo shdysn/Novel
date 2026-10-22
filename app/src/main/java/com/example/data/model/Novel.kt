@@ -22,8 +22,17 @@ data class Novel(
     @Json(name = "reading_progress") val readingProgress: Float = 0f, // 0.0 to 1.0
     @Json(name = "language") val language: String = "اردو (Urdu)",
     @Json(name = "created_at") val createdAt: String = "",
-    @Json(name = "is_custom_published") val isCustomPublished: Boolean = false
-)
+    @Json(name = "updated_at") val updatedAt: String = "",
+    @Json(name = "is_custom_published") val isCustomPublished: Boolean = false,
+    @Json(name = "publication_status") val publicationStatus: String = "published", // "published" or "draft"
+    @Json(name = "cover_image_url") val coverImageUrl: String? = null,
+    @Json(name = "author_id") val authorId: String? = null,
+    @Json(name = "category_id") val categoryId: String? = null,
+    val downloadStatus: com.example.data.local.DownloadStatus = com.example.data.local.DownloadStatus.AVAILABLE_OFFLINE
+) {
+    val isDraft: Boolean get() = publicationStatus.equals("draft", ignoreCase = true)
+    val isPublished: Boolean get() = publicationStatus.equals("published", ignoreCase = true)
+}
 
 enum class NovelCategory(val urduName: String, val englishName: String, val iconDescription: String) {
     ALL("تمام", "All", "تمام ناولز"),

@@ -6,5 +6,9 @@ data class Author(
     val bio: String,
     val totalNovelsCount: Int,
     val followersCount: String,
-    val avatarColorIndex: Int = 0
+    val avatarColorIndex: Int = 0,
+    val nameEnglish: String? = null,
+    val portraitUrl: String? = null,
+    val createdAt: String = "",
+    val updatedAt: String = ""
 )

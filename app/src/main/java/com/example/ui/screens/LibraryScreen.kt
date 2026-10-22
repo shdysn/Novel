@@ -24,12 +24,15 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalLibrary
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -249,12 +252,70 @@ fun LibraryScreen(
                         }
                     }
 
-                    items(downloadedNovels, key = { it.id }) { novel ->
-                        NovelCoverCard(
-                            novel = novel,
-                            onClick = { viewModel.navigateToDetail(novel.id) },
-                            onToggleFavorite = { viewModel.toggleFavorite(novel.id) }
-                        )
+                    if (downloadedNovels.isEmpty()) {
+                        item {
+                            EmptyLibraryState(
+                                title = "کوئی آف لائن ناول موجود نہیں",
+                                message = "کسی بھی ناول کی تفصیلات کھول کر 'آف لائن پڑھنے کے لیے محفوظ کریں' پر کلک کریں"
+                            )
+                        }
+                    } else {
+                        items(downloadedNovels, key = { it.id }) { novel ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.navigateToDetail(novel.id) },
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = novel.title,
+                                            fontFamily = FontFamily.Serif,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "مصنف: ${novel.author}  •  ${novel.totalChapters} ابواب  •  آف لائن محفوظ",
+                                            fontFamily = FontFamily.Serif,
+                                            fontSize = 12.sp,
+                                            color = EmeraldPrimary
+                                        )
+                                    }
+
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = { viewModel.deleteDownloadedNovel(novel.id) }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Delete Offline Cache",
+                                                tint = MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+
+                                        Button(
+                                            onClick = { viewModel.navigateToReader(novel.id) },
+                                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("مطالعہ", fontFamily = FontFamily.Serif, fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

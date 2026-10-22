@@ -54,6 +54,7 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
     val readerSettings: StateFlow<ReaderSettings> = repository.readerSettings
     val supabaseConfig: StateFlow<SupabaseConfig> = repository.supabaseConfig
     val isSyncing: StateFlow<Boolean> = repository.syncingState
+    val downloadStatuses: StateFlow<Map<String, com.example.data.local.DownloadStatus>> = repository.downloadStatuses
 
     // Specialized Novel Sections for Home Screen
     val continueReadingNovels: StateFlow<List<Novel>> = repository.novels.map { list ->
@@ -275,6 +276,28 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Offline Download controls
+    fun downloadNovel(novelId: String) {
+        viewModelScope.launch {
+            showMessage("ڈاؤن لوڈ شروع ہو رہا ہے...")
+            val (success, message) = repository.downloadNovel(novelId)
+            showMessage(message)
+        }
+    }
+
+    fun cancelDownload(novelId: String) {
+        repository.cancelDownload(novelId)
+        showMessage("ڈاؤن لوڈ منسوخ کر دیا گیا")
+    }
+
+    fun deleteDownloadedNovel(novelId: String) {
+        viewModelScope.launch {
+            val (success, message) = repository.deleteDownloadedNovel(novelId)
+            showMessage(message)
+        }
+    }
+
+    // Admin & Novel Management actions
     fun publishNewNovel(
         title: String,
         author: String,
@@ -282,6 +305,8 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
         synopsis: String,
         initialChapterTitle: String,
         initialChapterContent: String,
+        publicationStatus: String = "published",
+        coverImageUrl: String? = null,
         onSuccess: (Novel) -> Unit
     ) {
         viewModelScope.launch {
@@ -295,10 +320,54 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
                 category = category,
                 synopsis = synopsis,
                 initialChapterTitle = initialChapterTitle,
-                initialChapterContent = initialChapterContent
+                initialChapterContent = initialChapterContent,
+                publicationStatus = publicationStatus,
+                coverImageUrl = coverImageUrl
             )
-            showMessage("ناول \"$title\" کامیابی سے شائع ہو گیا!")
+            val statusMsg = if (publicationStatus == "draft") "ڈرافٹ محفوظ ہو گیا" else "شائع ہو گیا"
+            showMessage("ناول \"$title\" کامیابی سے $statusMsg!")
             onSuccess(newNovel)
+        }
+    }
+
+    fun updateNovelMetadata(
+        novelId: String,
+        title: String,
+        author: String,
+        category: String,
+        synopsis: String,
+        publicationStatus: String,
+        coverImageUrl: String? = null,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            val (success, msg) = repository.updateNovelMetadata(
+                novelId = novelId,
+                title = title,
+                author = author,
+                category = category,
+                synopsis = synopsis,
+                publicationStatus = publicationStatus,
+                coverImageUrl = coverImageUrl
+            )
+            showMessage(msg)
+            if (success) onSuccess()
+        }
+    }
+
+    fun deleteNovel(novelId: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            val (success, msg) = repository.deleteNovel(novelId)
+            showMessage(msg)
+            if (success) onSuccess()
+        }
+    }
+
+    fun uploadCoverImage(novelId: String, imageBytes: ByteArray, mimeType: String = "image/jpeg") {
+        viewModelScope.launch {
+            showMessage("تصویر اپ لوڈ کی جا رہی ہے...")
+            val (success, msg) = repository.uploadCoverImage(novelId, imageBytes, mimeType)
+            showMessage(msg)
         }
     }
 
@@ -306,6 +375,7 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
         novelId: String,
         chapterTitle: String,
         content: String,
+        publicationStatus: String = "published",
         onSuccess: (Chapter) -> Unit
     ) {
         viewModelScope.launch {
@@ -313,7 +383,7 @@ class NovelViewModel(application: Application) : AndroidViewModel(application) {
                 showMessage("براہ کرم باب کا متن درج کریں")
                 return@launch
             }
-            val chapter = repository.addChapterToNovel(novelId, chapterTitle, content)
+            val chapter = repository.addChapterToNovel(novelId, chapterTitle, content, publicationStatus)
             showMessage("نیا باب \"${chapter.title}\" شامل ہو گیا")
             onSuccess(chapter)
         }

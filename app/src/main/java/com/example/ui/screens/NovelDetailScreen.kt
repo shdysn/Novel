@@ -28,7 +28,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Language
@@ -298,6 +301,20 @@ fun NovelDetailScreen(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
+
+                        // Publication Status Badge (Published vs Draft)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (novel.isDraft) Color(0xFFE65100).copy(alpha = 0.15f) else Color(0xFF00695C).copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = if (novel.isDraft) "ڈرافٹ (غیر شائع)" else "شائع شدہ",
+                                fontFamily = FontFamily.Serif,
+                                fontSize = 11.sp,
+                                color = if (novel.isDraft) Color(0xFFE65100) else EmeraldPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
                     }
 
                     // Reading progress if previously opened
@@ -382,6 +399,159 @@ fun NovelDetailScreen(
                                 fontSize = 12.sp,
                                 color = EmeraldPrimary
                             )
+                        }
+                    }
+
+                    // OFFLINE DOWNLOAD CONTROL SECTION
+                    val downloadStatuses by viewModel.downloadStatuses.collectAsState()
+                    val currentStatus = downloadStatuses[novel.id] ?: novel.downloadStatus
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .testTag("novel_download_card"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = when (currentStatus) {
+                                com.example.data.local.DownloadStatus.AVAILABLE_OFFLINE -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                com.example.data.local.DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                                com.example.data.local.DownloadStatus.UPDATE_AVAILABLE -> GoldAccent.copy(alpha = 0.2f)
+                                com.example.data.local.DownloadStatus.FAILED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            when (currentStatus) {
+                                com.example.data.local.DownloadStatus.DOWNLOADING -> {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        androidx.compose.material3.CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = EmeraldPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "آف لائن محفوظ ہو رہا ہے...",
+                                            fontFamily = FontFamily.Serif,
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                    androidx.compose.material3.TextButton(
+                                        onClick = { viewModel.cancelDownload(novel.id) }
+                                    ) {
+                                        Text("منسوخ", fontFamily = FontFamily.Serif, fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                                com.example.data.local.DownloadStatus.AVAILABLE_OFFLINE -> {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = EmeraldPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "آف لائن دستیاب (انٹرنیٹ کے بغیر پڑھیں)",
+                                            fontFamily = FontFamily.Serif,
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                    androidx.compose.material3.IconButton(
+                                        onClick = { viewModel.deleteDownloadedNovel(novel.id) },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Remove Offline Cache",
+                                            tint = MaterialTheme.colorScheme.outline,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                com.example.data.local.DownloadStatus.UPDATE_AVAILABLE -> {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.CloudUpload,
+                                            contentDescription = null,
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "نیا ورژن کلاؤڈ پر دستیاب ہے",
+                                            fontFamily = FontFamily.Serif,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { viewModel.downloadNovel(novel.id) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = GoldAccent),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("اپ ڈیٹ", fontFamily = FontFamily.Serif, fontSize = 11.sp, color = Color.Black)
+                                    }
+                                }
+                                com.example.data.local.DownloadStatus.FAILED -> {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "ڈاؤن لوڈ ناکام رہا",
+                                            fontFamily = FontFamily.Serif,
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { viewModel.downloadNovel(novel.id) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("دوبارہ کوشش", fontFamily = FontFamily.Serif, fontSize = 11.sp)
+                                    }
+                                }
+                                com.example.data.local.DownloadStatus.NOT_DOWNLOADED -> {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.CloudDone,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "آف لائن پڑھنے کے لیے محفوظ کریں",
+                                                fontFamily = FontFamily.Serif,
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        OutlinedButton(
+                                            onClick = { viewModel.downloadNovel(novel.id) },
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                                        ) {
+                                            Text("ڈاؤن لوڈ", fontFamily = FontFamily.Serif, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
