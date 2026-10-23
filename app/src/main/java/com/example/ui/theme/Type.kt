@@ -2,12 +2,34 @@ package com.example.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.R
 
-// In Android, FontFamily.Serif activates the system's Arabic/Urdu Nastaliq or Naskh font rendering
-val UrduFontFamily = FontFamily.Serif
+// Bundled Urdu Nastaliq & Naskh Fonts
+val NotoNastaliqUrduFontFamily = FontFamily(
+    Font(R.font.noto_nastaliq_urdu, FontWeight.Normal),
+    Font(R.font.noto_nastaliq_urdu, FontWeight.Bold)
+)
+
+val MehrNastaliqFontFamily = FontFamily(
+    Font(R.font.gulzar, FontWeight.Normal),
+    Font(R.font.gulzar, FontWeight.Bold)
+)
+
+val AmiriFontFamily = FontFamily(
+    Font(R.font.amiri, FontWeight.Normal),
+    Font(R.font.amiri, FontWeight.Bold)
+)
+
+val LateefFontFamily = FontFamily(
+    Font(R.font.lateef, FontWeight.Normal)
+)
+
+// Primary app-wide Urdu font family
+val UrduFontFamily = NotoNastaliqUrduFontFamily
 
 val Typography = Typography(
     displayLarge = TextStyle(

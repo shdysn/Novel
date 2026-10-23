@@ -237,29 +237,34 @@ fun ReaderSettingsSheet(
                 colors = SliderDefaults.colors(thumbColor = EmeraldPrimary, activeTrackColor = EmeraldPrimary)
             )
 
-            // 3. Font Family (Nastaliq vs Naskh)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // 3. Font Family (Nastaliq, Mehr, Naskh)
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "رسم الخط (Font Family)",
                     fontFamily = FontFamily.Serif,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     FilterChip(
                         selected = settings.fontStyle == FontStyleType.NASTALEEQ,
                         onClick = { onSettingsChanged(settings.copy(fontStyle = FontStyleType.NASTALEEQ)) },
-                        label = { Text("جمیل نوری نستعلیق", fontFamily = FontFamily.Serif) }
+                        label = { Text("جمیل نوری نستعلیق", fontSize = 11.sp) }
+                    )
+                    FilterChip(
+                        selected = settings.fontStyle == FontStyleType.MEHR_NASTALEEQ,
+                        onClick = { onSettingsChanged(settings.copy(fontStyle = FontStyleType.MEHR_NASTALEEQ)) },
+                        label = { Text("مہر نستعلیق", fontSize = 11.sp) }
                     )
                     FilterChip(
                         selected = settings.fontStyle == FontStyleType.NASKH,
                         onClick = { onSettingsChanged(settings.copy(fontStyle = FontStyleType.NASKH)) },
-                        label = { Text("نسخ فونٹ", fontFamily = FontFamily.Default) }
+                        label = { Text("نسخ فونٹ", fontSize = 11.sp) }
                     )
                 }
             }

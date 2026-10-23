@@ -575,7 +575,12 @@ class NovelRepository(private val context: Context) {
                 prefs.edit().putBoolean("sb_connected", true).apply()
                 Pair(true, "کامیابی! Supabase کلاؤڈ کنکشن فعال ہے")
             } else {
-                val errorMsg = "رابطہ ناکام رہا (کوڈ: ${response.code()})"
+                val code = response.code()
+                val errorMsg = when (code) {
+                    404, 400 -> "Supabase میں ناولز ٹیبل نہیں ملا (کوڈ: $code)۔ براہ کرم اسکیما اسکرپٹ ڈیش بورڈ میں چلائیں"
+                    401, 403 -> "Anon Key غیر معتبر ہے یا RLS پالیسی اجازت نہیں دے رہی (کوڈ: $code)"
+                    else -> "رابطہ ناکام رہا (کوڈ: $code)"
+                }
                 _supabaseConfig.value = _supabaseConfig.value.copy(
                     isConnected = false,
                     lastSyncMessage = errorMsg

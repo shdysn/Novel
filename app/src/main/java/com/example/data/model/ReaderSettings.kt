@@ -26,8 +26,9 @@ enum class ReaderTheme(
 }
 
 enum class FontStyleType(val urduLabel: String) {
-    NASTALEEQ("جمیل نوری نستعلیق (Nastaliq)"),
-    NASKH("جدید نسخ (Modern Naskh)")
+    NASTALEEQ("نوری نستعلیق (Jameel / Noto)"),
+    MEHR_NASTALEEQ("مہر نستعلیق (Mehr / Gulzar)"),
+    NASKH("جدید نسخ (Amiri Naskh)")
 }
 
 enum class TextAlignmentType(val urduLabel: String) {

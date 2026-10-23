@@ -88,6 +88,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.BookPage
 import com.example.data.model.FontStyleType
+import com.example.ui.theme.AmiriFontFamily
+import com.example.ui.theme.MehrNastaliqFontFamily
+import com.example.ui.theme.NotoNastaliqUrduFontFamily
 import com.example.data.model.TextAlignmentType
 import com.example.ui.components.BookmarkDialog
 import com.example.ui.components.ReaderSettingsSheet
@@ -154,7 +157,11 @@ fun ReaderScreen(
         allBookmarks.filter { it.novelId == novel.id }
     }
 
-    val fontFam = if (readerSettings.fontStyle == FontStyleType.NASTALEEQ) FontFamily.Serif else FontFamily.Default
+    val fontFam = when (readerSettings.fontStyle) {
+        FontStyleType.NASTALEEQ -> NotoNastaliqUrduFontFamily
+        FontStyleType.MEHR_NASTALEEQ -> MehrNastaliqFontFamily
+        FontStyleType.NASKH -> AmiriFontFamily
+    }
     val activeTheme = readerSettings.theme
 
     val composeTextAlign = when (readerSettings.alignment) {
